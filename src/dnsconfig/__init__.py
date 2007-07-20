@@ -12,5 +12,9 @@ if (not os.path.exists(options.config)):
     sys.stderr.write("Config %(file)s not found.\n" % { 'file' : options.config })
     sys.exit(1)
 
-dnsconfig = DnsConfig(options.config)
-dnsconfig.execute()
+try:
+    dnsconfig = DnsConfig(options.config)
+    dnsconfig.execute()
+except Exception, exp:
+    sys.stderr.write("An error occurred: %s\n" % exp)
+    sys.exit(1)

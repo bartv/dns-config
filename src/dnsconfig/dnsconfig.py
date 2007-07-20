@@ -11,7 +11,7 @@ class DnsConfig:
         
         uri = config.get('ldap', 'uri')
         basedn = config.get('ldap', 'basedn')
-        self.__ldap_base = ldapobject.init(uri, basedn)
+        self.__ldap_base = ldapobject.init(uri, basedn)            
         
         self.__template_dir = config.get('templates', 'dir')
         for name, value in config.items('templates'):
@@ -54,28 +54,29 @@ class DnsConfig:
     def __parse_soa(self, record):
         parts = record[0].split(' ')
         if (len(parts) == 7):
-            return {'ns' : parts[0], 
-                    'admin' : parts[1], 
-                    'serial' : parts[2],
-                    'refresh' : parts[3],
-                    'retry' : parts[4],
-                    'expiry' : parts[5],
-                    'ttl' : parts[6]}
+            return {
+                    'ns'        : parts[0], 
+                    'admin'     : parts[1], 
+                    'serial'    : parts[2],
+                    'refresh'   : parts[3],
+                    'retry'     : parts[4],
+                    'expiry'    : parts[5],
+                    'ttl'       : parts[6],
+                   }
         return None  
     
-    def __update_zone(self, zone):
-        zone.soa = self.__parse_soa(zone.soa)
-        execfile(self.__templates['zone'], globals(), locals())
-        zonefile = locals()['result']
-        return zonefile.expandtabs(4)
-    
-    def __create_config(self, zones):
+    def __create_config(self, zones, type):
+        # load settings
         configfile = self.__config.get('options', 'configfile')
-        type = self.__config.get('options', 'type')
         dir = self.__config.get('options', 'zoneprefix')
-        execfile(self.__templates['config'], globals(), locals())
-        backupfile = None
+        masters = self.__config.get('options', 'masters').split(',')
+        transfer_source = self.__config.get('options', 'transfer-source')
         
+        # run template
+        execfile(self.__templates['config'], globals(), locals())
+        
+        # replace config if valid
+        backupfile = None
         if (os.path.exists(configfile)):
             backupfile = os.path.join(self.__config.get('options', 'statedir'), 'config-%s' % datetime.datetime.now().strftime("%Y%m%d%H%M"))
             shutil.copyfile(configfile, backupfile)
@@ -83,11 +84,42 @@ class DnsConfig:
         fd = open(configfile, 'w')
         fd.write(locals()['result'].expandtabs(4))
         fd.close()
-        
+        return
         if (not self.__check_config(configfile)):
             # revert config
             shutil.copyfile(backupfile, configfile)
-    
+            sys.stderr.write("Config error, reverting config.\n")
+            
+    def __update_zone(self, name):
+        zone.soa = self.__parse_soa(zone.soa)
+        execfile(self.__templates['zone'], globals(), locals())
+        newzoneconfig = locals()['result'].expandtabs(4)
+        zonefile = os.path.join(zonedir, name)
+        backupfile = None
+        
+        # backup zone
+        if (os.path.exists(zonefile)):
+            backupfile = os.path.join(self.__config.get('options', 'statedir'), '%s-%s' % (name, now))
+            shutil.copyfile(zonefile, backupfile)
+        
+        # update zone
+        fd = open(os.path.join(zonedir, name), 'w')
+        fd.write(newzoneconfig)
+        fd.close()
+        
+        if (not self.__check_zone(name, zonefile)):
+            sys.stderr.write("Zonecheck of zone %s failed, reverting changes." % name)
+            # revert config
+            if (backupfile == None):
+                os.remove(zonefile)
+                # there isn't a previous version, so remove the zone from the config
+                raise Exception("No previous zone file")
+            else:
+                shutil.copyfile(backupfile, zonefile)
+                return False
+        else:
+            return True
+                    
     def execute(self):
         config = self.__load_zones()
         old_serials = self.__load_serials()
@@ -97,40 +129,30 @@ class DnsConfig:
         updated = []   # list of updated zones
         zones = []     # list of valid zones to include
         now = datetime.datetime.now().strftime("%Y%m%d%H%M")
+        type = self.__config.get('options', 'type')
+        
         for zone in config[0]:
-            new_serial = self.__get_serial(zone.soa)
-            name = zone.zonename[0]
-            if (not old_serials.has_key(name) or new_serial != old_serials[name]):
-                newzoneconfig = self.__update_zone(zone)
-                zonefile = os.path.join(zonedir, name)
-                backupfile = None
-                
-                # backup zone
-                if (os.path.exists(zonefile)):
-                    backupfile = os.path.join(self.__config.get('options', 'statedir'), '%s-%s' % (name, now))
-                    shutil.copyfile(zonefile, backupfile)
-                
-                # update zone
-                fd = open(os.path.join(zonedir, name), 'w')
-                fd.write(newzoneconfig)
-                fd.close()
-                
-                if (not self.__check_zone(name, zonefile)):
-                    print "Zonecheck of zone %s failed, reverting changes." % name
-                    # revert config
-                    if (backupfile == None):
-                        os.remove(zonefile)
-                        # there isn't a previous version, so remove the zone from the config
-                        continue
-                    else:
-                        shutil.copyfile(backupfile, zonefile)
-                else:
-                    updated.append(zone)
-            zones.append(name)
+            try:
+                name = zone.zonename[0]
+                if (type == 'master'):
+                    new_serial = self.__get_serial(zone.soa)
+                    if (not old_serials.has_key(name) or new_serial != old_serials[name]):
+                        if (self.__update_zone(name)):
+                            updated.append(zone)
+                zones.append(name)
+            except:
+                pass
         
-        self.__create_config(zones)
-        
+        self.__create_config(zones, type)
         self.__store_serials(config[1])
+        
+        # reload the config
+        if (len(updated) > 0 or type != 'master'):
+            reloadcmd = self.__config.get('server', 'reload')
+            o = popen2.Popen4(reloadcmd)
+            exit = o.wait()
+            if (exit > 0):
+                sys.stderr.write("Error reloading dns server configuration.\n")
     
     def __check_zone(self, zonename, zonefile):
         cmd = self.__config.get('server', 'zonecheck')

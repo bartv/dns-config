@@ -26,8 +26,9 @@ attributes = {
     'nsec'   : 'NSEC' 
 }
 
-result  = "; Auto generated zone file from ldap at %s\n" % datetime.datetime.now().strftime("%d/%m/%Y -- %H:%M")
-result += "; dn: %s\n\n" % zone.dn
+result  = '; Auto generated zone file from ldap at %s\n' % datetime.datetime.now().strftime("%d/%m/%Y -- %H:%M")
+result += '; dn: %s\n' % zone.dn
+result += '; vim: ft=named\n\n'
 
 if (hasattr(zone, 'dnsttl')):
     result += '$TTL %s\n' % zone.dnsttl[0]
