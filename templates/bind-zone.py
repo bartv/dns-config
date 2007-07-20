@@ -57,9 +57,16 @@ for record in rr:
     items = dir(record)
     data = relative.ljust(padding)
     add = ''
+    if (hasattr(record, 'dnsttl')):
+        dnsttl = record.dnsttl[0]
+    else:
+        dnsttl = None
     for item in items:
         if (attributes.has_key(item)):
-            part = 'IN\t%s ' % attributes[item]
+            if (dnsttl != None):
+                part = '%s\tIN\t%s ' % (dnsttl, attributes[item])
+            else:
+                part = 'IN\t%s ' % attributes[item]
             for s in getattr(record, item):
                 data += add + part + s + '\n'
                 add = spaces[:padding]

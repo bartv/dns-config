@@ -1,4 +1,4 @@
-import ConfigParser, ldapobject, pickle, os, sys, datetime
+import ConfigParser, ldapobject, pickle, os, sys, datetime, shutil, popen2
 from zone import Zone
 
 class DnsConfig:
@@ -70,13 +70,23 @@ class DnsConfig:
         return zonefile.expandtabs(4)
     
     def __create_config(self, zones):
-        file = self.__config.get('options', 'configfile')
+        configfile = self.__config.get('options', 'configfile')
         type = self.__config.get('options', 'type')
         dir = self.__config.get('options', 'zoneprefix')
         execfile(self.__templates['config'], globals(), locals())
-        fd = open(file, 'w')
+        backupfile = None
+        
+        if (os.path.exists(configfile)):
+            backupfile = os.path.join(self.__config.get('options', 'statedir'), 'config-%s' % datetime.datetime.now().strftime("%Y%m%d%H%M"))
+            shutil.copyfile(configfile, backupfile)
+        
+        fd = open(configfile, 'w')
         fd.write(locals()['result'].expandtabs(4))
         fd.close()
+        
+        if (not self.__check_config(configfile)):
+            # revert config
+            shutil.copyfile(backupfile, configfile)
     
     def execute(self):
         config = self.__load_zones()
@@ -84,12 +94,59 @@ class DnsConfig:
         
         zonedir = self.__config.get('options', 'zonedir')
         
+        updated = []   # list of updated zones
+        zones = []     # list of valid zones to include
+        now = datetime.datetime.now().strftime("%Y%m%d%H%M")
         for zone in config[0]:
             new_serial = self.__get_serial(zone.soa)
             name = zone.zonename[0]
             if (not old_serials.has_key(name) or new_serial != old_serials[name]):
+                newzoneconfig = self.__update_zone(zone)
+                zonefile = os.path.join(zonedir, name)
+                backupfile = None
+                
+                # backup zone
+                if (os.path.exists(zonefile)):
+                    backupfile = os.path.join(self.__config.get('options', 'statedir'), '%s-%s' % (name, now))
+                    shutil.copyfile(zonefile, backupfile)
+                
+                # update zone
                 fd = open(os.path.join(zonedir, name), 'w')
-                fd.write(self.__update_zone(zone))
+                fd.write(newzoneconfig)
                 fd.close()
-        self.__create_config(config[0])
+                
+                if (not self.__check_zone(name, zonefile)):
+                    print "Zonecheck of zone %s failed, reverting changes." % name
+                    # revert config
+                    if (backupfile == None):
+                        os.remove(zonefile)
+                        # there isn't a previous version, so remove the zone from the config
+                        continue
+                    else:
+                        shutil.copyfile(backupfile, zonefile)
+                else:
+                    updated.append(zone)
+            zones.append(name)
+        
+        self.__create_config(zones)
+        
         self.__store_serials(config[1])
+    
+    def __check_zone(self, zonename, zonefile):
+        cmd = self.__config.get('server', 'zonecheck')
+        cmd = cmd.replace('$(zone)', zonename)
+        cmd = cmd.replace('$(file)', zonefile)
+        o = popen2.Popen4(cmd)
+        exit = o.wait()
+        if (exit > 0):
+            return False
+        return True
+    
+    def __check_config(self, configfile):
+        cmd = self.__config.get('server', 'configcheck')
+        cmd = cmd.replace('$(file)', configfile)
+        o = popen2.Popen4(cmd)
+        exit = o.wait()
+        if (exit > 0):
+            return False
+        return True
