@@ -27,8 +27,7 @@ attributes = {
 }
 
 result  = '; Auto generated zone file from ldap at %s\n' % datetime.datetime.now().strftime("%d/%m/%Y -- %H:%M")
-result += '; dn: %s\n' % zone.dn
-result += '; vim: ft=named\n\n'
+result += '; dn: %s\n\n' % zone.dn
 
 if (hasattr(zone, 'dnsttl')):
     result += '$TTL %s\n' % zone.dnsttl[0]
@@ -41,7 +40,7 @@ result += "                    %s        ; expiry\n" % zone.soa['expiry']
 result += "                    %s        ; ttl\n" % zone.soa['ttl']
 result += "                )\n\n"
 
-rr = zone.children
+rr = zone.get_children()
 
 spaces = ' '.join([''] * 40)
 

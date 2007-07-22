@@ -33,16 +33,25 @@ class Zone:
         ('nSECRecord', 'nsec'), 
     ]
     
+    __ldap_entry = None
+    
+    __children = None
+    
     def __init__(self, entry):
+        self.__ldap_entry = entry
         for ldap_attribute, attribute in self._ldap_attributes:
             try:
                 value = getattr(entry, ldap_attribute)
                 setattr(self, attribute, value)
             except AttributeError:
                 pass
-        rel_zones = entry.get_children()
-        self.children = [ Zone(rel) for rel in rel_zones ]
         self.dn = entry.dn
+        
+    def get_children(self):
+        if (self.__children == None):
+            rel_zones = self.__ldap_entry.get_children()
+            self.__children = [ Zone(rel) for rel in rel_zones ]
+        return self.__children
     
     def _diff(self, other):
         new = {}

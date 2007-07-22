@@ -3,8 +3,10 @@ from zone import Zone
 
 class DnsConfig:
     __templates = {}
+    __force = False
     
-    def __init__(self, file):
+    def __init__(self, file, force):
+        self.__force = force
         config = ConfigParser.SafeConfigParser()
         config.read(file)
         self.__config = config
@@ -90,7 +92,9 @@ class DnsConfig:
             shutil.copyfile(backupfile, configfile)
             sys.stderr.write("Config error, reverting config.\n")
             
-    def __update_zone(self, name):
+    def __update_zone(self, zone):
+        name = zone.zonename[0]
+        zonedir = self.__config.get('options', 'zonedir')
         zone.soa = self.__parse_soa(zone.soa)
         execfile(self.__templates['zone'], globals(), locals())
         newzoneconfig = locals()['result'].expandtabs(4)
@@ -107,8 +111,10 @@ class DnsConfig:
         fd.write(newzoneconfig)
         fd.close()
         
+        print newzoneconfig
+        
         if (not self.__check_zone(name, zonefile)):
-            sys.stderr.write("Zonecheck of zone %s failed, reverting changes." % name)
+            sys.stderr.write("Zonecheck of zone %s failed, reverting changes.\n" % name)
             # revert config
             if (backupfile == None):
                 os.remove(zonefile)
@@ -121,10 +127,11 @@ class DnsConfig:
             return True
                     
     def execute(self):
+        if (self.__force):
+            print "Forcing reload of zone files."
+        
         config = self.__load_zones()
         old_serials = self.__load_serials()
-        
-        zonedir = self.__config.get('options', 'zonedir')
         
         updated = []   # list of updated zones
         zones = []     # list of valid zones to include
@@ -136,11 +143,11 @@ class DnsConfig:
                 name = zone.zonename[0]
                 if (type == 'master'):
                     new_serial = self.__get_serial(zone.soa)
-                    if (not old_serials.has_key(name) or new_serial != old_serials[name]):
-                        if (self.__update_zone(name)):
+                    if (self.__force or not old_serials.has_key(name) or new_serial != old_serials[name]):
+                        if (self.__update_zone(zone)):
                             updated.append(zone)
                 zones.append(name)
-            except:
+            except Exception, e:
                 pass
         
         self.__create_config(zones, type)
