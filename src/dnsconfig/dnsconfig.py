@@ -1,9 +1,10 @@
 import ConfigParser, ldapobject, pickle, os, sys, datetime, shutil, popen2
-from zone import Zone
+from zone import LdapZone
 
 class DnsConfig:
     __templates = {}
     __force = False
+    __defaults = {}
     
     def __init__(self, file, force):
         self.__force = force
@@ -19,15 +20,19 @@ class DnsConfig:
         for name, value in config.items('templates'):
             if (name != 'dir'):
                 self.__templates[name] = os.path.join(self.__template_dir, value)
+                
+        for name, value in config.items('defaults'):
+            self.__defaults[name] = value
         
     def __load_zones(self):
-        zones = self.__ldap_base.get_children('(&(objectClass=dNSZone)(relativeDomainName=#))', True)
+        zones = self.__ldap_base.get_children('(&(objectClass=dNSZone)(sOARecord=*))', True)
         serials = {}
         zoneobjects = []
 
         for zone in zones:
-            z = Zone(zone)
-            serials[z.zonename[0]] = self.__get_serial(z.soa)
+            z = LdapZone(zone.zoneName[0], zone)
+            soa = z.get_soa()
+            serials[z.get_zonename()] = soa['serial']
             zoneobjects.append(z)
             
         return (zoneobjects, serials)
@@ -50,23 +55,6 @@ class DnsConfig:
         fd.close()
         return serials
             
-    def __get_serial(self, soa):
-        return self.__parse_soa(soa)['serial']
-    
-    def __parse_soa(self, record):
-        parts = record[0].split(' ')
-        if (len(parts) == 7):
-            return {
-                    'ns'        : parts[0], 
-                    'admin'     : parts[1], 
-                    'serial'    : parts[2],
-                    'refresh'   : parts[3],
-                    'retry'     : parts[4],
-                    'expiry'    : parts[5],
-                    'ttl'       : parts[6],
-                   }
-        return None  
-    
     def __create_config(self, zones, type):
         # load settings
         configfile = self.__config.get('options', 'configfile')
@@ -92,10 +80,11 @@ class DnsConfig:
             shutil.copyfile(backupfile, configfile)
             sys.stderr.write("Config error, reverting config.\n")
             
-    def __update_zone(self, zone):
-        name = zone.zonename[0]
+    def __update_zone(self, zone, now):
+        name = zone.get_zonename()
+        defaults = self.__defaults
         zonedir = self.__config.get('options', 'zonedir')
-        zone.soa = self.__parse_soa(zone.soa)
+        print "Updating %s with serial %s" % (name, zone.get_soa()['serial'])
         execfile(self.__templates['zone'], globals(), locals())
         newzoneconfig = locals()['result'].expandtabs(4)
         zonefile = os.path.join(zonedir, name)
@@ -139,16 +128,16 @@ class DnsConfig:
         type = self.__config.get('options', 'type')
         
         for zone in config[0]:
-            try:
-                name = zone.zonename[0]
+            #try:
+                name = zone.get_zonename()
                 if (type == 'master'):
-                    new_serial = self.__get_serial(zone.soa)
+                    new_serial = zone.get_soa()['serial']
                     if (self.__force or not old_serials.has_key(name) or new_serial != old_serials[name]):
-                        if (self.__update_zone(zone)):
+                        if (self.__update_zone(zone, now)):
                             updated.append(zone)
                 zones.append(name)
-            except Exception, e:
-                pass
+            #except Exception, e:
+            #    pass
         
         self.__create_config(zones, type)
         self.__store_serials(config[1])
@@ -167,6 +156,7 @@ class DnsConfig:
         cmd = cmd.replace('$(file)', zonefile)
         o = popen2.Popen4(cmd)
         exit = o.wait()
+        print o.fromchild.read()
         if (exit > 0):
             return False
         return True

@@ -1,3 +1,5 @@
 #!/usr/bin/python -tt
 
 import dnsconfig
+
+dnsconfig.main()
