@@ -27,8 +27,8 @@ spaces = ' '.join([''] * 40)
 def sp(rel):
     rellen = len(rel)
     size = (rellen/4) + 4
-    if (size < 12):
-        return 12
+    if (size < 16):
+        return 16
     return size
 
 def create_relative(record):
@@ -45,9 +45,9 @@ def create_relative(record):
             continue
         resource_record = record.get(item)
         if (resource_record[1] > 0):
-            part = '%s\tIN\t%s ' % (resource_record[1], item.upper())
+            part = '%s\tIN %s ' % (resource_record[1], item.upper())
         else:
-            part = 'IN\t%s ' % item
+            part = 'IN %s ' % item.upper()
         for s in resource_record[0]:
             data += add + part + s + '\n'
             add = spaces[:padding]
@@ -56,27 +56,47 @@ def create_relative(record):
     return result
 
 ## adding defaults if needed
-result += create_relative(main)
+# TODO @
+main= create_relative(main)
 
 # check if nameservers are defined
 if (not main.has_rr('ns')):
     str = '%sIN NS %s\n'
-    result += str % (spaces[:12], defaults['ns']) 
-    result += str % (spaces[:12], defaults['ns2'])
+    result += str % (spaces[:16], defaults['ns']) 
+    result += str % (spaces[:16], defaults['ns2'])
     result += '\n'
 
 # check if an a record is defined
 if (not main.has_rr('a')):
-    result += spaces[:12] + 'IN A %s\n\n' % defaults['host']
+    result += spaces[:16] + 'IN A %s\n\n' % defaults['host']
     
 # check for mx records
 if (not main.has_rr('mx')):
-    str = '%sIN MX %s\n'
-    for k, v in defaults.items():
-        if (k[:2] == 'mx'):
-            result += str % (spaces[:12], v)
+    if (defaults.has_key('ttlmx')):
+        str = '%s' + defaults['ttlmx'] + ' IN MX %s\n'
+    else:
+        str = '%sIN MX %s\n'
+    for i in range(1,100):
+        key = 'mx%d' % i
+        if (defaults.has_key(key)):
+            result += str % (spaces[:16], defaults[key])
+        else:
+            break
     result += '\n'
+    
+# add localhost entry
+if (defaults['localhost'] == 'true' and not rr.has_key('localhost')):
+    result += 'localhost' + spaces[:7] + 'IN A\t\t127.0.0.1\n'
 
+# add a ns alias
+if (defaults['nsalias'] == 'true' and not rr.has_key('ns')):
+    result += 'ns' + spaces[:14] + 'IN CNAME\t%s\n' % defaults['ns']
+    
+# check if there is a www entry
+if (defaults.has_key('webhost') and not (rr.has_key('www') or rr.has_key('*'))):
+    result += 'www' + spaces[:13] + 'IN CNAME\t%s\n' % defaults['webhost']
+    
+result += '\n'
 
 # add all defined resource records
 for name, record in rr.items():

@@ -100,8 +100,6 @@ class DnsConfig:
         fd.write(newzoneconfig)
         fd.close()
         
-        print newzoneconfig
-        
         if (not self.__check_zone(name, zonefile)):
             sys.stderr.write("Zonecheck of zone %s failed, reverting changes.\n" % name)
             # revert config
@@ -156,7 +154,6 @@ class DnsConfig:
         cmd = cmd.replace('$(file)', zonefile)
         o = popen2.Popen4(cmd)
         exit = o.wait()
-        print o.fromchild.read()
         if (exit > 0):
             return False
         return True
