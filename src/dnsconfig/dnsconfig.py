@@ -28,12 +28,26 @@ class DnsConfig:
         zones = self.__ldap_base.get_children('(&(objectClass=dNSZone)(sOARecord=*))', True)
         serials = {}
         zoneobjects = []
+        zonedict = {}
 
+        append = []
         for zone in zones:
             z = LdapZone(zone.zoneName[0], zone)
+            zonedict[zone.zoneName[0]] = zone
             soa = z.get_soa()
             serials[z.get_zonename()] = soa['serial']
             zoneobjects.append(z)
+            
+            if (hasattr(zone, 'tXTRecord')):
+                txt = zone.tXTRecord
+                for t in txt:
+                    if (t[:7] == 'append:'):
+                        append.append((z, t[8:]))
+                        
+        for zone, link in append:
+            if (zonedict.has_key(link)):
+                linked = zonedict[link]
+                zone.append_children(linked)
             
         return (zoneobjects, serials)
             
@@ -167,7 +181,7 @@ class DnsConfig:
             if (backupfile == None):
                 os.remove(zonefile)
                 # there isn't a previous version, so remove the zone from the config
-                raise Exception("No previous zone file")
+                raise FileNotFoundException("No previous zone file")
             else:
                 #shutil.copyfile(backupfile, zonefile)
                 return False
@@ -187,7 +201,7 @@ class DnsConfig:
         type = self.__config.get('options', 'type')
         
         for zone in config[0]:
-            #try:
+            try:
                 name = zone.get_zonename()
                 if (type == 'master'):
                     new_serial = zone.get_soa()['serial']
@@ -195,8 +209,8 @@ class DnsConfig:
                         if (self.__update_zone(zone, now)):
                             updated.append(zone)
                 zones.append(name)
-            #except Exception, e:
-            #    pass
+            except FileNotFoundException, e:
+                pass
         
         self.__create_config(zones, type)
         self.__store_serials(config[1])
@@ -228,3 +242,6 @@ class DnsConfig:
         if (exit > 0):
             return False
         return True
+
+class FileNotFoundException(Exception):
+    pass

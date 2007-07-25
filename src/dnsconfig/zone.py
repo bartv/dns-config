@@ -8,6 +8,7 @@ class LdapZone:
     def __init__(self, name, entry):
         self.__zone_name = name
         self.__ldap_entry = entry
+        self.__append = []
         
         if (hasattr(entry, 'dNSTTL')):
             self.__ttl = entry.dNSTTL[0]
@@ -22,6 +23,8 @@ class LdapZone:
         
         self.__relative_part = {}
         
+    def append_children(self, zone):
+        self.__append.append(zone)
             
     def get_dn(self):
         return self.__ldap_entry.dn
@@ -34,7 +37,14 @@ class LdapZone:
         self.__relative_part['@'] = relative
         
         # now the children
-        children = self.__ldap_entry.get_children('(&(objectClass=dNSzone)(zoneName=%s))' % self.get_zonename(), False)
+        self.__load_children(entry, self.get_zonename())
+        
+        # load children of appended domains
+        for zone in self.__append:
+            self.__load_children(zone, zone.zoneName[0])
+    
+    def __load_children(self, entry, name):
+        children = entry.get_children('(&(objectClass=dNSzone)(zoneName=%s))' % name, False)
         for child in children:
             name = child.relativeDomainName[0]
             relative = None
