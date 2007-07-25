@@ -1,5 +1,5 @@
 import ConfigParser, ldapobject, pickle, os, sys, datetime, shutil, popen2
-from zone import LdapZone
+from zone import LdapZone, RelativeZone
 
 class DnsConfig:
     __templates = {}
@@ -80,13 +80,74 @@ class DnsConfig:
             shutil.copyfile(backupfile, configfile)
             sys.stderr.write("Config error, reverting config.\n")
             
+    def __update_defaults(self, zone):
+        rrlist = zone.get_relative_zones()
+        main = rrlist['@']
+        
+        # check if nameservers are defined
+        if (not main.has_rr('ns')):
+            main.set_rr('ns', [self.__defaults['ns'], self.__defaults['ns2']])
+        
+        # check if an a record is defined
+        if (not main.has_rr('a')):
+            main.set_rr('a', [self.__defaults['host']])
+            
+        # check for mx records
+        if (not main.has_rr('mx')):
+            if (self.__defaults.has_key('ttlmx')):
+                main.set_ttl('mx', self.__defaults['ttlmx'])
+                
+            mx = []
+            for i in range(1,100):
+                key = 'mx%d' % i
+                if (self.__defaults.has_key(key)):
+                    mx.append(self.__defaults[key])
+                else:
+                    break
+            main.set_rr('mx', mx)
+            
+        # add localhost entry
+        if (self.__defaults['localhost'] == 'true' and not rrlist.has_key('localhost')):
+            localhost = RelativeZone(zone, 'localhost')
+            localhost.set_rr('a', ['127.0.0.1'])
+        
+        # add a ns alias
+        if (self.__defaults['nsalias'] == 'true' and not rrlist.has_key('ns')):
+            ns = RelativeZone(zone, 'ns')
+            ns.set_rr('a', [self.__defaults['ns']])
+            
+        # check if there is a www entry
+        if (self.__defaults.has_key('webhost') and not (rrlist.has_key('www') or rrlist.has_key('*'))):
+            www = RelativeZone(zone, 'www')
+            www.set_rr('a', [self.__defaults['webhost']])
+            
+    def __prepare_rr(self, record):
+        list = []
+        relativename = record.get_name()
+        items = record.get_rr_list()
+        for type in items:
+            rr = record.get(type)
+            list.append((relativename, rr[1], type, rr[0]))
+        return list
+            
     def __update_zone(self, zone, now):
         name = zone.get_zonename()
         defaults = self.__defaults
         zonedir = self.__config.get('options', 'zonedir')
+        
         print "Updating %s with serial %s" % (name, zone.get_soa()['serial'])
+        
+        zone.load_relative_zones()
+        self.__update_defaults(zone)
+        
+        data = {}
+        rrlist = zone.get_relative_zones()
+        for i, rr in rrlist.items():
+            data[i] = self.__prepare_rr(rr)
+        
         execfile(self.__templates['zone'], globals(), locals())
         newzoneconfig = locals()['result'].expandtabs(4)
+        
         zonefile = os.path.join(zonedir, name)
         backupfile = None
         
@@ -108,7 +169,7 @@ class DnsConfig:
                 # there isn't a previous version, so remove the zone from the config
                 raise Exception("No previous zone file")
             else:
-                shutil.copyfile(backupfile, zonefile)
+                #shutil.copyfile(backupfile, zonefile)
                 return False
         else:
             return True
@@ -155,6 +216,7 @@ class DnsConfig:
         o = popen2.Popen4(cmd)
         exit = o.wait()
         if (exit > 0):
+            print o.fromchild.read()
             return False
         return True
     
