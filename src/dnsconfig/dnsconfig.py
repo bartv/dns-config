@@ -171,7 +171,9 @@ class DnsConfig:
                 name = zone.get_zonename()
                 if (old_serials.has_key(name)):
                     oldserial = old_serials[name]
+                    del old_serials[name]
                 else:
+                    new = True
                     oldserial = 0
                     
                 result = self.update_zone(zone, oldserial, now)
@@ -186,18 +188,26 @@ class DnsConfig:
                     will reload the dns server config for nothing.
                 '''
                 pass
+        
+        removed = False
+        for zone, serial in old_serials.items():
+            removed = True
+            self.remove_zone(zone)
 
-        if (new or self.force_reload):
+        if (new or removed or self.force_reload):
             # there are new zones, create a new config file        
             self.__create_config(zones, type)
         
         # reload the config
-        self.do_reload(updated, new)
+        self.do_reload(updated, new, removed)
         
         # store serials of all zones
         self.__store_serials(config[1])
         
-    def do_reload(self, updated, new):
+    def remove_zone(self, zonename):
+        print "%s has been removed" % zonename
+        
+    def do_reload(self, updated, new, removed):
         '''
             Decide if a reload of the server is needed given if there are 
             updated zones and there are new zones. This method should be overriden
@@ -312,10 +322,18 @@ class MasterConfig(DnsConfig):
                 return False
         else:
             return True
+        
+    def remove_zone(self, zonename):
+        DnsConfig.remove_zone(self, zonename)
+        # todo: remove zone file
+        zonedir = self.config.get('options', 'zonedir')
+        zonefile = os.path.join(zonedir, zonename)
+        if (os.path.isfile(zonefile)):
+            os.remove(zonefile)
             
-    def do_reload(self, updated, new):
+    def do_reload(self, updated, new, removed):
         # update the config when zones are updated and when they are added
-        if (updated or new or self.force_reload):
+        if (updated or new or self.force_reload or removed):
             self.reload_server()
             
     def get_type(self):
@@ -325,12 +343,15 @@ class MasterConfig(DnsConfig):
 class SlaveConfig(DnsConfig):
     def __init__(self, file, force):
         DnsConfig.__init__(self, file, force)
-        print "Slave"
         
-    def do_reload(self, updated, new):
+    def do_reload(self, updated, new, removed):
         # only reload the config when zones are added
-        if (new or self.force_reload):
+        if (new or self.force_reload or removed):
             self.reload_server()
+            
+    def update_config(self, zone, oldserial, now):
+        if (oldserial == 0): # it's new
+            print "Added zone %s\n" % zone.get_zonename()
             
     def get_type(self):
         return 'slave'
