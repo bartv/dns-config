@@ -46,6 +46,9 @@ class DnsConfig:
                 for t in txt:
                     if (t[:7] == 'append:'):
                         append.append((z, t[8:]))
+                    zo = 'zone-only: yes'
+                    if (t[:len(zo)] == zo):
+                        z.set_zoneonly()
                         
         for zone, link in append:
             if (zonedict.has_key(link)):
@@ -72,7 +75,7 @@ class DnsConfig:
         fd.close()
         return serials
             
-    def __create_config(self, zones, type):
+    def create_config(self, zones, type):
         ''' 
             Create the configuration of the dns server by executing the defined
             template
@@ -180,7 +183,7 @@ class DnsConfig:
                 if (result):
                     updated = True
 
-                zones.append(name)
+                zones.append(zone)
             except FileNotFoundException, e:
                 ''' 
                     An error occured updating this zone and there wasn't an old
@@ -196,7 +199,7 @@ class DnsConfig:
 
         if (new or removed or self.force_reload):
             # there are new zones, create a new config file        
-            self.__create_config(zones, type)
+            self.create_config(zones, type)
         
         # reload the config
         self.do_reload(updated, new, removed)

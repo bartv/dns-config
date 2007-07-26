@@ -2,9 +2,14 @@ result  = "// Auto generated from ldap at %s\n" % datetime.datetime.now().strfti
 result += "// vim: ft=named\n\n"
 
 for zone in zones:
-    result += 'zone "%s" IN {\n' % zone
+    name = zone.get_zonename()
+    
+    if (zone.is_zoneonly()):
+        continue
+    
+    result += 'zone "%s" IN {\n' % name
     result += '\ttype %s;\n' % type
-    result += '\tfile "%s/%s";\n' % (dir, zone)
+    result += '\tfile "%s/%s";\n' % (dir, name)
     if (type == 'slave'):
         result += '\tmasters {\n\t\t';
         result += '\n\t\t'.join(masters) + ';'

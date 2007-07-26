@@ -17,6 +17,13 @@ class LdapZone:
         self.__soa = soa
         
         self.__relative_part = {}
+        self.__zone_only = False
+        
+    def set_zoneonly(self):
+        self.__zone_only = True
+    
+    def is_zoneonly(self):
+        return self.__zone_only
         
     def append_children(self, zone):
         self.__append.append(zone)
