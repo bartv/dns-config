@@ -1,10 +1,4 @@
 class LdapZone:
-    __ldap_entry = None
-    __zone_name = None
-    __relative_part = {}
-    __ttl = -1
-    __soa = None
-        
     def __init__(self, name, entry):
         self.__zone_name = name
         self.__ldap_entry = entry
@@ -14,12 +8,13 @@ class LdapZone:
             self.__ttl = entry.dNSTTL[0]
         else:
             self.__ttl = -1
-            
+        
         if (hasattr(entry, 'sOARecord')):
-            self.__soa = entry.sOARecord[0]
-            self.__soa = self.__parse_soa(self.__soa)
+            soa = entry.sOARecord[0]
+            soa = self.__parse_soa(soa)
         else:
-            self.__soa = None
+            soa = None
+        self.__soa = soa
         
         self.__relative_part = {}
         
@@ -93,10 +88,6 @@ class LdapZone:
         return None 
     
 class RelativeZone:
-    __relative_name = None
-    __rr = {}
-    __ttl = {}
-    __zone = None
     __ldap_attributes = {
         'sOARecord' : 'soa',
         'aRecord' : 'a', 

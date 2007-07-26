@@ -9,5 +9,5 @@ for zone in zones:
         result += '\tmasters {\n\t\t';
         result += '\n\t\t'.join(masters) + ';'
         result += '\n\t};\n'
-        result += '\ttransfer-source %s\n' % transfer_source
+        result += '\ttransfer-source %s;\n' % transfer_source
     result += '};\n\n'
