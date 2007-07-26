@@ -1,10 +1,10 @@
 %{!?python_sitelib: %define python_sitelib %(%{__python} -c "from distutils.sysconfig import get_python_lib; print get_python_lib()")}
 
-%define hg_tag  e3aeb06c8e63
+%define hg_tag  c54c6b210da3
 
 Name:           dns-config
 Version:        0.2
-Release:        1%{?dist}
+Release:        2%{?dist}
 Summary:        Tool to generate dns configuration from ldap
 
 Group:          System/tools
@@ -56,5 +56,8 @@ rm -rf $RPM_BUILD_ROOT
 %{_localstatedir}/cache/dnsconfig
 
 %changelog
+* Wed Jan 26 2007 Bart Vanbrabant <bart@ulyssis.org> 0.2-2
+- Update snapshot
+
 * Sun Jan 22 2007 Bart Vanbrabant <bart@ulyssis.org> 0.2-1
 - Initial packaging
