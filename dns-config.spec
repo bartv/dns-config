@@ -20,45 +20,49 @@ BuildArch:      noarch
 %description
 
 %prep
-%setup -q -n %{name}-%{hg_tag}
+%setup -q -n %{name}-%{version}
 
 %build
 %{__python} setup.py build 
 
 %install
 rm -rf $RPM_BUILD_ROOT
-%{__python} setup.py install -O1 --root $RPM_BUILD_ROOT
+%{__python} setup.py install --single-version-externally-managed -O1 --root $RPM_BUILD_ROOT --record=INSTALLED_FILES
+
+# install templates
 mkdir -p $RPM_BUILD_ROOT%{_datadir}/dns-config/templates
 install -pm 0644 templates/*.py  $RPM_BUILD_ROOT%{_datadir}/dns-config/templates/
+
+# install config file
 mkdir -p $RPM_BUILD_ROOT%{_sysconfdir}
 install -pm 0644 dnsconfig.conf $RPM_BUILD_ROOT%{_sysconfdir}/
-mkdir -p $RPM_BUILD_ROOT%{_bindir}
-install -pm 0755 dnsconfig $RPM_BUILD_ROOT%{_bindir}/
 
+#mkdir -p $RPM_BUILD_ROOT%{_bindir}
+#install -pm 0755 dnsconfig $RPM_BUILD_ROOT%{_bindir}/
+
+# create log and cache dir
 mkdir -p $RPM_BUILD_ROOT%{_localstatedir}/log/dnsconfig
 mkdir -p $RPM_BUILD_ROOT%{_localstatedir}/cache/dnsconfig
 
 %clean
 rm -rf $RPM_BUILD_ROOT
 
-%files
+%files -f INSTALLED_FILES
 %defattr(-,root,root,-)
+%config %{_sysconfdir}/dnsconfig.conf
 %doc
-%{python_sitelib}/dnsconfig/*.py*
-# egg stuff
+
 %{python_sitelib}/dns_config-*/*
 %{_datadir}/dns-config/templates/*
-%config %{_sysconfdir}/dnsconfig.conf
-%{_bindir}/dnsconfig
 %{_localstatedir}/log/dnsconfig
 %{_localstatedir}/cache/dnsconfig
 
 %changelog
-* Fri 27 2007 Bart Vanbrabant <bart@ulyssis.org> 0.3-1
+* Fri Jul 27 2007 Bart Vanbrabant <bart@ulyssis.org> 0.3-1
 - Update to 0.3
 
-* Wed Jan 26 2007 Bart Vanbrabant <bart@ulyssis.org> 0.2-3
+* Wed Jul 26 2007 Bart Vanbrabant <bart@ulyssis.org> 0.2-3
 - Update snapshot
 
-* Sun Jan 22 2007 Bart Vanbrabant <bart@ulyssis.org> 0.2-1
+* Sun Jul 22 2007 Bart Vanbrabant <bart@ulyssis.org> 0.2-1
 - Initial packaging
