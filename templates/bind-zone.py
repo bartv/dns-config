@@ -22,13 +22,16 @@ result += "                )\n\n"
 # find the longest relative part and sort the list
 size = 0
 main = None
+wildcard = None
 list = []
 for name, item in data.items():
     length = len(name)
     if (length > size):
         size = length
-    if (name == '@'):
+    if (name == '@'):   # put the @ rr first
         main = (name, item)
+    elif (name == '*'): # put the * as the last item
+        wildcard = (name, item)
     else:
         list.append((name, item))
 
@@ -39,6 +42,8 @@ if (size < 12):
 # create list
 items = [main]
 items.extend(list)
+if (wildcard != None):
+    items.append(wildcard)
 
 # create rr of the zone file
 for name, item in items:
