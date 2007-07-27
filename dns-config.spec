@@ -50,7 +50,7 @@ rm -rf $RPM_BUILD_ROOT
 # egg stuff
 %{python_sitelib}/dns_config-*/*
 %{_datadir}/dns-config/templates/*
-%{_sysconfdir}/dnsconfig.conf
+%config %{_sysconfdir}/dnsconfig.conf
 %{_bindir}/dnsconfig
 %{_localstatedir}/log/dnsconfig
 %{_localstatedir}/cache/dnsconfig
