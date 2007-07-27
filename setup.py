@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
         name = "dns-config",
-        version = "0.3",
+        version = "0.4",
         packages = find_packages('src'),
         package_dir = {'':'src'},
         description = "Tool to generate dns configuration from ldap",

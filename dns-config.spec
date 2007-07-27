@@ -1,7 +1,7 @@
 %{!?python_sitelib: %define python_sitelib %(%{__python} -c "from distutils.sysconfig import get_python_lib; print get_python_lib()")}
 
 Name:           dns-config
-Version:        0.3
+Version:        0.4
 Release:        1%{?dist}
 Summary:        Tool to generate dns configuration from ldap
 
@@ -58,6 +58,9 @@ rm -rf $RPM_BUILD_ROOT
 %{_localstatedir}/cache/dnsconfig
 
 %changelog
+* Fri Jul 27 2007 Bart Vanbrabant <bart@ulyssis.org> 0.4-1
+- Update to 0.4 (serious bug fixes)
+
 * Fri Jul 27 2007 Bart Vanbrabant <bart@ulyssis.org> 0.3-1
 - Update to 0.3
 
