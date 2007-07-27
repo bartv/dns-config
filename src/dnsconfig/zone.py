@@ -1,3 +1,6 @@
+# Licensed under the MIT license
+# Copyright 2007, Bart Vanbrabant <bart@ulyssis.org> 
+
 class LdapZone:
     def __init__(self, name, entry):
         self.__zone_name = name

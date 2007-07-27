@@ -1,6 +1,8 @@
+# Licensed under the MIT license
+# Copyright 2007, Bart Vanbrabant <bart@ulyssis.org> 
+
 import ConfigParser, ldapobject, pickle, os, sys, datetime, shutil, popen2
 from zone import LdapZone, RelativeZone
-
         
 class DnsConfig:
     def __init__(self, file, force):

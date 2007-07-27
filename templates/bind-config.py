@@ -1,3 +1,6 @@
+# Licensed under the MIT license
+# Copyright 2007, Bart Vanbrabant <bart@ulyssis.org> 
+
 result  = "// Auto generated from ldap at %s\n" % datetime.datetime.now().strftime("%d/%m/%Y -- %H:%M")
 result += "// vim: ft=named\n\n"
 

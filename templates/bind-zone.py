@@ -1,3 +1,6 @@
+# Licensed under the MIT license
+# Copyright 2007, Bart Vanbrabant <bart@ulyssis.org> 
+
 result  = '; Auto generated zone file from ldap at %s\n' % datetime.datetime.now().strftime("%d/%m/%Y -- %H:%M")
 result += '; dn: %s\n\n' % zone.get_dn()
 

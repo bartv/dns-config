@@ -1,3 +1,6 @@
+# Licensed under the MIT license
+# Copyright 2007, Bart Vanbrabant <bart@ulyssis.org> 
+
 from optparse import OptionParser
 import dnsconfig
 import os, sys
