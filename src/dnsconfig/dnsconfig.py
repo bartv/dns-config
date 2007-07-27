@@ -325,7 +325,7 @@ class MasterConfig(DnsConfig):
                 # there isn't a previous version, so remove the zone from the config
                 raise FileNotFoundException("No previous zone file")
             else:
-                #shutil.copyfile(backupfile, zonefile)
+                shutil.copyfile(backupfile, zonefile)
                 return False
         else:
             return True
