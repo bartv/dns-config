@@ -94,6 +94,9 @@ class LdapZone:
                    }
         return None 
     
+    def add_relative(self, relative):
+        self.__relative_part[relative.get_name()] = relative
+    
 class RelativeZone:
     __ldap_attributes = {
         'sOARecord' : 'soa',

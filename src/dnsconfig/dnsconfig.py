@@ -120,6 +120,12 @@ class DnsConfig:
         if (not main.has_rr('a')):
             main.set_rr('a', [self.defaults['host']])
             
+        # check if there is a www entry
+        if (self.defaults['www'] == 'true' and not (rrlist.has_key('www') or rrlist.has_key('*'))):
+            www = RelativeZone(zone, 'www')
+            www.set_rr('a', [self.defaults['host']])
+            zone.add_relative(www)
+            
         # check for mx records
         if (not main.has_rr('mx')):
             if (self.defaults.has_key('ttlmx')):
@@ -138,18 +144,14 @@ class DnsConfig:
         if (self.defaults['localhost'] == 'true' and not rrlist.has_key('localhost')):
             localhost = RelativeZone(zone, 'localhost')
             localhost.set_rr('a', ['127.0.0.1'])
+            zone.add_relative(localhost)
         
         # add a ns alias
         if (self.defaults['nsalias'] == 'true' and not rrlist.has_key('ns')):
             ns = RelativeZone(zone, 'ns')
-            ns.set_rr('a', [self.defaults['ns']])
+            ns.set_rr('cname', [self.defaults['ns']])
+            zone.add_relative(ns)
             
-        # check if there is a www entry
-        if (self.defaults.has_key('webhost') and not (rrlist.has_key('www') or rrlist.has_key('*'))):
-            www = RelativeZone(zone, 'www')
-            www.set_rr('a', [self.defaults['webhost']])
-
-    
     def update_zone(self, zone, oldserial, now): 
         '''
             Update the given zone by loading all information needed, executing
@@ -238,7 +240,7 @@ class DnsConfig:
         o = popen2.Popen4(cmd)
         exit = o.wait()
         if (exit > 0):
-            #print o.fromchild.read()
+            print o.fromchild.read()
             return False
         return True
     
