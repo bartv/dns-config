@@ -1,0 +1,5 @@
+dns-config (0.4-1) unstable; urgency=low
+
+  * initial package
+
+ -- Bart Vanbrabant <bart@ulyssis.org>  Tue, 31 Jul 2007 21:12:46 +0200
