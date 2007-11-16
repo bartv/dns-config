@@ -116,7 +116,15 @@ class DnsConfig:
         
         # check if nameservers are defined
         if (not main.has_rr('ns')):
-            main.set_rr('ns', [self.defaults['ns'], self.defaults['ns2']])
+            ns = []
+            for i in range(1,100):
+                key = 'ns%d' % i
+                if (self.defaults.has_key(key)):
+                    ns.append(self.defaults[key])
+                else:
+                    break
+            main.set_rr('ns', ns)
+
         
         # check if an a record is defined
         if (not main.has_rr('a')):
