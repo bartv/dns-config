@@ -157,9 +157,9 @@ class DnsConfig:
             zone.add_relative(localhost)
         
         # add a ns alias
-        if (self.defaults['nsalias'] == 'true' and not rrlist.has_key('ns')):
+        if (self.defaults['nsalias'] == 'true' and not rrlist.has_key('ns') and self.defaults.has_key('ns1')):
             ns = RelativeZone(zone, 'ns')
-            ns.set_rr('cname', [self.defaults['ns']])
+            ns.set_rr('cname', [self.defaults['ns1']])
             zone.add_relative(ns)
             
     def update_zone(self, zone, oldserial, now): 
