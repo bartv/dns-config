@@ -20,7 +20,7 @@ class LdapZone:
         self.__soa = soa
         
         self.__relative_part = {}
-        self.__zone_only = False
+        self.__zone_only = False  
         
     def set_zoneonly(self):
         self.__zone_only = True

@@ -42,15 +42,19 @@ class DnsConfig:
             soa = z.get_soa()
             serials[z.get_zonename()] = soa['serial']
             zoneobjects.append(z)
-            
-            if (hasattr(zone, 'tXTRecord')):
-                txt = zone.tXTRecord
-                for t in txt:
-                    if (t[:7] == 'append:'):
-                        append.append((z, t[8:]))
-                    zo = 'zone-only: yes'
-                    if (t[:len(zo)] == zo):
-                        z.set_zoneonly()
+    
+            entries = zone.get_children("(&(objectClass=dNSZone)(!(sOARecord=*))(relativeDomainName=@)(zoneName=%s))" % zone.zoneName[0], True)
+            entries.append(zone)
+
+            for entry in entries:
+                if (hasattr(entry, 'tXTRecord')):
+                    txt = entry.tXTRecord
+                    for t in txt:
+                        if (t[:7] == 'append:'):
+                            append.append((z, t[8:]))
+                        zo = 'zone-only: yes'
+                        if (t[:len(zo)] == zo):
+                            z.set_zoneonly()
                         
         for zone, link in append:
             if (zonedict.has_key(link)):
@@ -263,7 +267,6 @@ class DnsConfig:
         o = popen2.Popen4(cmd)
         exit = o.wait()
         if (exit > 0):
-            #print o.fromchild.read()
             return False
         return True
     
